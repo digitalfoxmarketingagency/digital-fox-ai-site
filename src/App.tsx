@@ -19,7 +19,6 @@ import {
   MapPin,
   Send,
   CheckCircle2,
-  Sparkles,
 } from "lucide-react";
 
 /* =========================================================
@@ -30,6 +29,20 @@ import {
    ========================================================= */
 
 document.title = "Digital Fox — Marketing Agency";
+
+/* ---------------------------------------------------------
+   CONFIG — fill these in before going live
+
+   Telegram is intentionally NOT configured here. The bot token is a
+   secret and must never appear in frontend code (anyone could view it
+   in the browser). Instead, the form calls our own serverless function
+   at /api/contact, which holds the token securely server-side.
+   See api/contact.ts and the setup guide for where the real values go.
+   --------------------------------------------------------- */
+
+// Get this from formspree.io after creating a form — this one IS safe
+// to expose publicly, Formspree form IDs are not secret credentials.
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/YOUR_FORM_ID";
 
 /* ---------------------------------------------------------
    Language context
@@ -268,22 +281,25 @@ const PRICING_TIERS: PricingTier[] = [
 interface TeamMember {
   role: L;
   description: L;
+  image: string;
 }
 
 const TEAM: TeamMember[] = [
+  {
+    role: { my: "Business Manager", en: "Business Manager" },
+    description: {
+      my: "Strategy၊ Budget နှင့် Reporting ကို မှန်ကန်စွာ ထိန်းသိမ်းပေးသည်။",
+      en: "Keeps strategy, budget, and reporting honest and on track.",
+    },
+    image: "https://res.cloudinary.com/dgz0amdvk/image/upload/v1782239544/Strategist_Fox_Mascot_l17ljt.svg",
+  },
   {
     role: { my: "Content Creator", en: "Content Creator" },
     description: {
       my: "သင့်ဘရန်ဒ်ပီတ်နဲ့ ကိုက်ညီတဲ့ စာသားများနှင့် Post Plan များကို ရေးသားပေးသည်။",
       en: "Writes the words and plans the posts that sound like your brand, not a template.",
     },
-  },
-  {
-    role: { my: "Video Editor", en: "Video Editor" },
-    description: {
-      my: "နောက်ဆုံးထိ ကြည့်စေနိုင်သော Short-form Video များကို ဖြတ်တောက်ပေးသည်။",
-      en: "Cuts the short-form video that actually gets watched to the end.",
-    },
+    image: "https://res.cloudinary.com/dgz0amdvk/image/upload/v1782241106/Strategist_Fox_Mascot_davc09.svg",
   },
   {
     role: { my: "Graphic Designer", en: "Graphic Designer" },
@@ -291,13 +307,15 @@ const TEAM: TeamMember[] = [
       my: "Logo၊ Ad Creative စသော Visual System တစ်ခုလုံးကို တည်ဆောက်ပေးသည်။",
       en: "Builds the visual system — logos, ad creative, and everything in between.",
     },
+    image: "https://res.cloudinary.com/dgz0amdvk/image/upload/v1782240627/Designer_Fox_Mascot_e9ay33.svg",
   },
   {
-    role: { my: "Business Manager", en: "Business Manager" },
+    role: { my: "Video Editor", en: "Video Editor" },
     description: {
-      my: "Strategy၊ Budget နှင့် Reporting ကို မှန်ကန်စွာ ထိန်းသိမ်းပေးသည်။",
-      en: "Keeps strategy, budget, and reporting honest and on track.",
+      my: "နောက်ဆုံးထိ ကြည့်စေနိုင်သော Short-form Video များကို ဖြတ်တောက်ပေးသည်။",
+      en: "Cuts the short-form video that actually gets watched to the end.",
     },
+    image: "https://res.cloudinary.com/dgz0amdvk/image/upload/v1782241402/Creator_Fox_Mascot_jusoqu.svg",
   },
 ];
 
@@ -364,6 +382,42 @@ function SectionHeading({
       <Eyebrow>{eyebrow}</Eyebrow>
       <h2 className="mt-4 text-3xl font-bold text-ink sm:text-4xl">{title}</h2>
       {description && <p className="mt-4 text-ink-muted">{description}</p>}
+    </motion.div>
+  );
+}
+
+function TiltCard({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], ["14deg", "-14deg"]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-14deg", "14deg"]);
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    mouseX.set((e.clientX - rect.left) / rect.width - 0.5);
+    mouseY.set((e.clientY - rect.top) / rect.height - 0.5);
+  }
+
+  function handleMouseLeave() {
+    mouseX.set(0);
+    mouseY.set(0);
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      whileHover={{ y: -8, scale: 1.03 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      style={{ perspective: 700 }}
+      className="rounded-2xl border border-white/5 bg-elevated p-6 text-center"
+    >
+      <motion.div style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}>
+        {children}
+      </motion.div>
     </motion.div>
   );
 }
@@ -825,13 +879,18 @@ function Team() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
-              className="rounded-2xl border border-white/5 bg-elevated p-6 text-center"
             >
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-obsidian">
-                <Sparkles size={22} className="text-fox-orange" />
-              </div>
-              <h3 className="font-semibold text-ink">{member.role[lang]}</h3>
-              <p className="mt-2 text-sm text-ink-muted">{member.description[lang]}</p>
+              <TiltCard>
+                <div className="mx-auto mb-4 h-20 w-20">
+                  <img
+                    src={member.image}
+                    alt={`${member.role.en} mascot`}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <h3 className="font-semibold text-ink">{member.role[lang]}</h3>
+                <p className="mt-2 text-sm text-ink-muted">{member.description[lang]}</p>
+              </TiltCard>
             </motion.div>
           ))}
         </div>
@@ -846,6 +905,9 @@ function Team() {
 
 function Contact() {
   const { lang } = useLang();
+  const [form, setForm] = useState({ name: "", email: "", business: "", message: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+
   const copy = {
     eyebrow: { my: "တစ်ခုခု အတူ Growth လုပ်ကြရအောင်", en: "Let's grow something" },
     title: { my: "သင့်လုပ်ငန်းအကြောင်း ပြောပြပါ", en: "Tell us about your business" },
@@ -859,7 +921,58 @@ function Contact() {
     businessPh: { my: "လုပ်ငန်းအမည်", en: "Business name" },
     messagePh: { my: "ဘာအကူအညီ လိုအပ်ပါသလဲ?", en: "What do you need help with?" },
     send: { my: "Message ပို့မည်", en: "Send message" },
+    sending: { my: "ပို့နေသည်...", en: "Sending..." },
+    success: {
+      my: "ပို့ပြီးပါပြီ! မကြာမီ ပြန်ဆက်သွယ်ပါမည်။",
+      en: "Sent! We will get back to you soon.",
+    },
+    error: {
+      my: "ပို့မှု မအောင်မြင်ပါ — ဖုန်း ဒါမှမဟုတ် Email ဖြင့် ဆက်သွယ်ပေးပါ။",
+      en: "Something went wrong — please contact us by phone or email instead.",
+    },
   };
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function sendToTelegram() {
+    // Calls our own backend route — the bot token lives only on the
+    // server (Vercel Environment Variable), never in this file.
+    return fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+  }
+
+  async function sendToFormspree() {
+    const fd = new FormData();
+    fd.append("name", form.name);
+    fd.append("email", form.email);
+    fd.append("business", form.business);
+    fd.append("message", form.message);
+    return fetch(FORMSPREE_ENDPOINT, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: fd,
+    });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("sending");
+
+    const results = await Promise.allSettled([sendToTelegram(), sendToFormspree()]);
+    const anySuccess = results.some((r) => r.status === "fulfilled" && r.value.ok);
+
+    if (anySuccess) {
+      setStatus("success");
+      setForm({ name: "", email: "", business: "", message: "" });
+    } else {
+      setStatus("error");
+    }
+  }
 
   return (
     <section id="contact" className="py-24">
@@ -888,30 +1001,45 @@ function Contact() {
         </motion.div>
 
         <motion.form
+          onSubmit={handleSubmit}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="rounded-2xl border border-white/5 bg-elevated p-8"
-          onSubmit={(e) => e.preventDefault()}
         >
           <div className="space-y-4">
             <input
               type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              required
               placeholder={copy.namePh[lang]}
               className="w-full rounded-xl border border-white/10 bg-obsidian px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-neon-cyan focus:outline-none"
             />
             <input
               type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              required
               placeholder={copy.emailPh[lang]}
               className="w-full rounded-xl border border-white/10 bg-obsidian px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-neon-cyan focus:outline-none"
             />
             <input
               type="text"
+              name="business"
+              value={form.business}
+              onChange={handleChange}
               placeholder={copy.businessPh[lang]}
               className="w-full rounded-xl border border-white/10 bg-obsidian px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-neon-cyan focus:outline-none"
             />
             <textarea
+              name="message"
+              value={form.message}
+              onChange={handleChange}
+              required
               placeholder={copy.messagePh[lang]}
               rows={4}
               className="w-full rounded-xl border border-white/10 bg-obsidian px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-neon-cyan focus:outline-none"
@@ -920,10 +1048,24 @@ function Contact() {
 
           <button
             type="submit"
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-neon-gradient py-3 text-sm font-semibold text-obsidian transition-transform hover:scale-[1.01]"
+            disabled={status === "sending"}
+            style={{
+              background: "linear-gradient(90deg, #43d9ff 0%, #a78bfa 50%, #ff4dd8 100%)",
+            }}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-obsidian transition-transform hover:scale-[1.01] disabled:opacity-60"
           >
-            {copy.send[lang]} <Send size={16} />
+            {status === "sending" ? copy.sending[lang] : copy.send[lang]}
+            {status !== "sending" && <Send size={16} />}
           </button>
+
+          {status === "success" && (
+            <p className="mt-4 flex items-center gap-2 text-sm text-neon-cyan">
+              <CheckCircle2 size={16} /> {copy.success[lang]}
+            </p>
+          )}
+          {status === "error" && (
+            <p className="mt-4 text-sm text-neon-magenta">{copy.error[lang]}</p>
+          )}
         </motion.form>
       </div>
     </section>
